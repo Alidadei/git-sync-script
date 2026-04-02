@@ -5,32 +5,34 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_LIST="$SCRIPT_DIR/repos.txt"
 LOG_FILE="$SCRIPT_DIR/git-auto-sync.log"
-TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
 }
 
-log "=== Sync started ==="
+is_rebase_in_progress() {
+    local git_dir
+    git_dir="$(git rev-parse --git-dir 2>/dev/null)" || return 1
+    [ -d "$git_dir/rebase-merge" ] || [ -d "$git_dir/rebase-apply" ]
+}
 
-if [ ! -f "$REPO_LIST" ]; then
-    log "ERROR: repos.txt not found"
-    exit 1
-fi
+sync_repo() {
+    local repo="$1"
+    local branch="HEAD"
 
-while IFS= read -r line || [ -n "$line" ]; do
-    # Skip empty lines and comments
-    line=$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    [ -z "$line" ] && continue
-    [[ "$line" == \#* ]] && continue
-
-    if [ ! -d "$line/.git" ]; then
-        log "SKIP: $line is not a git repo"
-        continue
+    if [ ! -e "$repo/.git" ]; then
+        log "SKIP: $repo is not a git repo"
+        return
     fi
 
-    log "Syncing: $line"
-    cd "$line" || continue
+    log "Syncing: $repo"
+
+    if ! pushd "$repo" > /dev/null; then
+        log "  ERROR: Failed to enter repo $repo"
+        return
+    fi
+
+    branch="$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo HEAD)"
 
     # Add all changes
     git add -A
@@ -43,16 +45,48 @@ while IFS= read -r line || [ -n "$line" ]; do
         log "  Nothing to commit"
     fi
 
-    # Pull with rebase
-    git pull --rebase --autostash >> "$LOG_FILE" 2>&1
-
-    # Push
-    if git push >> "$LOG_FILE" 2>&1; then
-        log "  Pushed"
+    # Pull with rebase; abort and skip push if pull/rebase fails
+    if git pull --rebase --autostash >> "$LOG_FILE" 2>&1; then
+        if git push >> "$LOG_FILE" 2>&1; then
+            log "  Pushed"
+        else
+            log "  ERROR: Push failed"
+        fi
     else
-        log "  ERROR: Push failed"
+        log "  ERROR: Pull/rebase failed for $repo on branch $branch"
+
+        if is_rebase_in_progress; then
+            if git rebase --abort >> "$LOG_FILE" 2>&1; then
+                log "  Rebase aborted for $repo on branch $branch"
+            else
+                log "  ERROR: Rebase abort failed for $repo on branch $branch"
+            fi
+        else
+            log "  No rebase state detected for $repo on branch $branch"
+        fi
+
+        log "  SKIP: Push skipped for $repo on branch $branch"
     fi
 
+    popd > /dev/null || exit 1
+}
+
+log "=== Sync started ==="
+
+if [ ! -f "$REPO_LIST" ]; then
+    log "ERROR: repos.txt not found"
+    exit 1
+fi
+
+cd "$SCRIPT_DIR" || exit 1
+
+while IFS= read -r line || [ -n "$line" ]; do
+    # Skip empty lines and comments
+    line=$(printf '%s\n' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+    [ -z "$line" ] && continue
+    [[ "$line" == \#* ]] && continue
+
+    sync_repo "$line"
 done < "$REPO_LIST"
 
 log "=== Sync finished ==="
