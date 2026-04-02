@@ -12,7 +12,7 @@ if not exist "%REPO_LIST%" (
     exit /b 1
 )
 
-for /f "usebackq tokens=* delims=" %%R in ("%REPO_LIST%") do (
+for /f "usebackq eol= tokens=* delims=" %%R in ("%REPO_LIST%") do (
     call :sync_repo "%%R"
 )
 
@@ -74,19 +74,47 @@ goto :eof
 :abort_rebase_if_needed
 set "REBASE_MERGE="
 for /f "delims=" %%G in ('git rev-parse --git-path rebase-merge 2^>nul') do set "REBASE_MERGE=%%G"
-if defined REBASE_MERGE if exist "%REBASE_MERGE%\NUL" goto :abort_rebase
+if defined REBASE_MERGE if exist "%REBASE_MERGE%\NUL" goto :do_abort_rebase
 
 set "REBASE_APPLY="
 for /f "delims=" %%G in ('git rev-parse --git-path rebase-apply 2^>nul') do set "REBASE_APPLY=%%G"
-if defined REBASE_APPLY if exist "%REBASE_APPLY%\NUL" goto :abort_rebase
+if defined REBASE_APPLY if exist "%REBASE_APPLY%\NUL" goto :do_abort_rebase
+
+:: Also check for merge/cherry-pick conflicts
+set "MERGE_HEAD="
+for /f "delims=" %%G in ('git rev-parse --git-path MERGE_HEAD 2^>nul') do set "MERGE_HEAD=%%G"
+if defined MERGE_HEAD if exist "%MERGE_HEAD%" goto :do_abort_merge
+
+set "CHERRY_HEAD="
+for /f "delims=" %%G in ('git rev-parse --git-path CHERRY_PICK_HEAD 2^>nul') do set "CHERRY_HEAD=%%G"
+if defined CHERRY_HEAD if exist "%CHERRY_HEAD%" goto :do_abort_merge
 
 goto :eof
 
-:abort_rebase
+:do_abort_rebase
 git rebase --abort >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     echo [%date% %time:~0,8%]   ERROR Rebase abort failed >> "%LOG_FILE%"
 ) else (
     echo [%date% %time:~0,8%]   Rebase aborted >> "%LOG_FILE%"
+)
+call :drop_leftover_stash
+goto :eof
+
+:do_abort_merge
+git merge --abort >> "%LOG_FILE%" 2>&1
+if errorlevel 1 (
+    echo [%date% %time:~0,8%]   ERROR Merge abort failed >> "%LOG_FILE%"
+) else (
+    echo [%date% %time:~0,8%]   Merge aborted >> "%LOG_FILE%"
+)
+call :drop_leftover_stash
+goto :eof
+
+:drop_leftover_stash
+:: If autostash pop failed, a stash entry may remain
+git stash drop >> "%LOG_FILE%" 2>&1
+if not errorlevel 1 (
+    echo [%date% %time:~0,8%]   Dropped leftover stash >> "%LOG_FILE%"
 )
 goto :eof

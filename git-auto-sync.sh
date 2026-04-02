@@ -16,6 +16,18 @@ is_rebase_in_progress() {
     [ -d "$git_dir/rebase-merge" ] || [ -d "$git_dir/rebase-apply" ]
 }
 
+is_merge_in_progress() {
+    local git_dir
+    git_dir="$(git rev-parse --git-dir 2>/dev/null)" || return 1
+    [ -f "$git_dir/MERGE_HEAD" ] || [ -f "$git_dir/CHERRY_PICK_HEAD" ]
+}
+
+drop_leftover_stash() {
+    if git stash drop >> "$LOG_FILE" 2>&1; then
+        log "  Dropped leftover stash"
+    fi
+}
+
 sync_repo() {
     local repo="$1"
     local branch="HEAD"
@@ -61,8 +73,16 @@ sync_repo() {
             else
                 log "  ERROR: Rebase abort failed for $repo on branch $branch"
             fi
+            drop_leftover_stash
+        elif is_merge_in_progress; then
+            if git merge --abort >> "$LOG_FILE" 2>&1; then
+                log "  Merge aborted for $repo on branch $branch"
+            else
+                log "  ERROR: Merge abort failed for $repo on branch $branch"
+            fi
+            drop_leftover_stash
         else
-            log "  No rebase state detected for $repo on branch $branch"
+            log "  No conflict state detected for $repo on branch $branch"
         fi
 
         log "  SKIP: Push skipped for $repo on branch $branch"
