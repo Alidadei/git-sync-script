@@ -4,7 +4,7 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_LIST="$SCRIPT_DIR/repos.txt"
-LOG_FILE="$SCRIPT_DIR/git-auto-sync.log"
+LOG_FILE="$SCRIPT_DIR/logs/git-auto-sync.log"
 
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"

@@ -3,7 +3,7 @@ setlocal EnableExtensions DisableDelayedExpansion
 
 set "SCRIPT_DIR=%~dp0"
 set "REPO_LIST=%SCRIPT_DIR%repos.txt"
-set "LOG_FILE=%SCRIPT_DIR%git-auto-sync.log"
+set "LOG_FILE=%SCRIPT_DIR%logs\git-auto-sync.log"
 
 echo [%date% %time:~0,8%] Sync started >> "%LOG_FILE%"
 
