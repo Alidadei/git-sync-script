@@ -5,6 +5,9 @@ set "SCRIPT_DIR=%~dp0"
 set "REPO_LIST=%SCRIPT_DIR%repos.txt"
 set "LOG_FILE=%SCRIPT_DIR%git-auto-sync.log"
 
+:: Ensure UTF-8 BOM so editors display Chinese correctly
+powershell -NoProfile -Command "$f='%LOG_FILE%'; if(!(Test-Path $f)){[IO.File]::WriteAllBytes($f,[byte[]](239,187,191))}else{$b=[IO.File]::ReadAllBytes($f);if($b[0]-ne239){[IO.File]::WriteAllBytes($f,[byte[]](239,187,191)+$b)}}" >nul 2>&1
+
 echo [%date% %time:~0,8%] Sync started >> "%LOG_FILE%"
 
 if not exist "%REPO_LIST%" (
