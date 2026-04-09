@@ -4,23 +4,38 @@ chcp 65001 >nul
 set "SCRIPT_DIR=%~dp0"
 set "REPO_LIST=%SCRIPT_DIR%repos.txt"
 set "LOG_FILE=%SCRIPT_DIR%git-auto-sync.log"
+set "TMP_LOG=%SCRIPT_DIR%git-auto-sync.tmp"
 
-:: Ensure UTF-8 BOM so editors display Chinese correctly
-powershell -NoProfile -Command "$f='%LOG_FILE%'; if(!(Test-Path $f)){[IO.File]::WriteAllBytes($f,[byte[]](239,187,191))}else{$b=[IO.File]::ReadAllBytes($f);if($b[0]-ne239){[IO.File]::WriteAllBytes($f,[byte[]](239,187,191)+$b)}}" >nul 2>&1
+:: Truncate temp file
+echo. > "%TMP_LOG%" 2>nul
 
-echo [%date% %time:~0,8%] Sync started >> "%LOG_FILE%"
+call :log "=== Sync started ==="
 
 if not exist "%REPO_LIST%" (
-    echo [%date% %time:~0,8%] ERROR repos.txt not found >> "%LOG_FILE%"
-    exit /b 1
+    call :log "ERROR repos.txt not found"
+    goto :finish
 )
 
 for /f "usebackq tokens=* delims=" %%R in ("%REPO_LIST%") do (
     call :sync_repo "%%R"
 )
 
-echo [%date% %time:~0,8%] Sync finished >> "%LOG_FILE%"
+:finish
+call :log "=== Sync finished ==="
+
+:: Prepend new log to main log (newest first), with UTF-8 BOM
+powershell -NoProfile -Command ^
+    "$new=[IO.File]::ReadAllText('%TMP_LOG%',[Text.Encoding]::UTF8);" ^
+    "$old=''; if(Test-Path '%LOG_FILE%'){$old=[IO.File]::ReadAllText('%LOG_FILE%',[Text.Encoding]::UTF8)};" ^
+    "[IO.File]::WriteAllText('%LOG_FILE%',([char]239+[char]187+[char]191)+$new+$old,(New-Object Text.UTF8Encoding $false));" ^
+    "Remove-Item '%TMP_LOG%' -Force" >nul 2>&1
 exit /b 0
+
+:: === Subroutines ===
+
+:log
+echo [%date% %time:~0,8%] %~1 >> "%TMP_LOG%"
+goto :eof
 
 :sync_repo
 set "REPO=%~1"
@@ -30,31 +45,31 @@ echo %REPO% | findstr /b "#" >nul
 if not errorlevel 1 goto :eof
 
 if not exist "%REPO%\.git" (
-    echo [%date% %time:~0,8%] SKIP %REPO% not a git repo >> "%LOG_FILE%"
+    call :log "SKIP %REPO% not a git repo"
     goto :eof
 )
 
-echo [%date% %time:~0,8%] Syncing %REPO% >> "%LOG_FILE%"
+call :log "Syncing %REPO%"
 
 pushd "%REPO%"
 
-git add -A 2>> "%LOG_FILE%"
+git add -A 2>> "%TMP_LOG%"
 
 git diff --cached --quiet 2>nul
 if errorlevel 1 (
-    git commit -m "auto sync %date:/=-% %time:~0,5%" >> "%LOG_FILE%" 2>&1
-    echo [%date% %time:~0,8%]   Committed >> "%LOG_FILE%"
+    git commit -m "auto sync %date:/=-% %time:~0,5%" >> "%TMP_LOG%" 2>&1
+    call :log "  Committed"
 ) else (
-    echo [%date% %time:~0,8%]   Nothing to commit >> "%LOG_FILE%"
+    call :log "  Nothing to commit"
 )
 
-git pull --rebase --autostash >> "%LOG_FILE%" 2>&1
+git pull --rebase --autostash >> "%TMP_LOG%" 2>&1
 
-git push >> "%LOG_FILE%" 2>&1
+git push >> "%TMP_LOG%" 2>&1
 if errorlevel 1 (
-    echo [%date% %time:~0,8%]   ERROR Push failed >> "%LOG_FILE%"
+    call :log "  ERROR Push failed"
 ) else (
-    echo [%date% %time:~0,8%]   Pushed >> "%LOG_FILE%"
+    call :log "  Pushed"
 )
 
 popd
