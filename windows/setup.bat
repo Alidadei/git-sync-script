@@ -1,6 +1,13 @@
 @echo off
 chcp 65001 >nul
 
+:: Self-elevate to admin if not already
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    powershell -Command "Start-Process cmd -ArgumentList '/c \"%~f0\"' -Verb RunAs"
+    exit /b
+)
+
 set "SCRIPT_DIR=%~dp0"
 set "PS1_PATH=%SCRIPT_DIR%git-auto-sync-silent.ps1"
 
