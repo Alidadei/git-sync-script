@@ -84,6 +84,23 @@ if "%~1"=="*" (
 )
 goto :eof
 
+:check_new_repo
+set "NR=%~1"
+if "%NR%"=="" goto :eof
+echo %NR% | findstr /b "#" >nul
+if not errorlevel 1 goto :eof
+if not exist "%NR%\.git" goto :eof
+for %%I in ("%NR%.") do set "NR_SHORT=%%~nxI"
+:: Check if already in branches.txt
+findstr /b /l /c:"%NR_SHORT% " "%BRANCHES_FILE%" >nul 2>&1
+if not errorlevel 1 goto :eof
+findstr /b /l /c:"%NR% " "%BRANCHES_FILE%" >nul 2>&1
+if not errorlevel 1 goto :eof
+:: Not found - append branch entries
+call :gen_branch_line "%NR%"
+echo.>> "%BRANCHES_FILE%"
+goto :eof
+
 :main_loop
 :: Read config (re-read every cycle)
 set "INTERVAL=10"
@@ -99,6 +116,13 @@ for /f "tokens=* delims=" %%R in ('findstr /v /b /c:"#" "%REPO_LIST%"') do set "
 if not "!HAS_REPOS!"=="1" goto :skip_gen_branches
 goto :generate_branches
 :skip_gen_branches
+
+:: Append branches for new repos not yet in branches.txt
+if exist "%BRANCHES_FILE%" (
+    for /f "usebackq tokens=* delims=" %%R in ("%REPO_LIST%") do (
+        call :check_new_repo "%%R"
+    )
+)
 
 :: Truncate temp file
 echo. > "%TMP_LOG%" 2>nul
@@ -178,7 +202,7 @@ if "!BRANCH_FOUND!"=="0" (
         set "BRANCH_FOUND=1"
     )
 )
-if "!BRANCH_FOUND!"=="0" call :do_sync "master"
+if "!BRANCH_FOUND!"=="0" call :log "SKIP %REPO% unable to detect branch"
 
 popd
 goto :eof

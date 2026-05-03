@@ -91,6 +91,38 @@ generate_branches_file() {
     sleep 30
 }
 
+# Append branches for new repos not yet in branches.txt
+append_new_repo_branches() {
+    [ ! -f "$BRANCHES_FILE" ] && return
+    while IFS= read -r repo || [ -n "$repo" ]; do
+        repo=$(echo "$repo" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        [ -z "$repo" ] && continue
+        [[ "$repo" == \#* ]] && continue
+        [ ! -d "$repo/.git" ] && continue
+        short=$(basename "$repo")
+        grep -q "^${short} " "$BRANCHES_FILE" 2>/dev/null && continue
+        grep -q "^${repo} " "$BRANCHES_FILE" 2>/dev/null && continue
+        cd "$repo" || continue
+        default_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "master")
+        branches=()
+        while IFS= read -r br; do
+            branches+=("$br")
+        done < <(git branch --format='%(refname:short)' 2>/dev/null)
+        blist=$(IFS='；'; echo "${branches[*]}")
+        {
+            echo "# $short ：$blist"
+            echo "$short $default_branch"
+            for br in "${branches[@]}"; do
+                if [ "$br" != "$default_branch" ]; then
+                    echo "#$short $br"
+                fi
+            done
+            echo ""
+        } >> "$BRANCHES_FILE"
+        cd "$ROOT_DIR"
+    done < "$REPO_LIST"
+}
+
 # Main loop
 while true; do
     INTERVAL=$(grep "^INTERVAL=" "$CONFIG_FILE" 2>/dev/null | cut -d'=' -f2)
@@ -102,6 +134,8 @@ while true; do
     if [ ! -f "$BRANCHES_FILE" ] && grep -vE '^(#.*|[[:space:]]*)$' "$REPO_LIST" | grep -q . 2>/dev/null; then
         generate_branches_file
     fi
+    # Append branches for new repos
+    append_new_repo_branches
 
     > "$TMP_LOG"
 
@@ -129,7 +163,15 @@ while true; do
                 [ -n "$br" ] && BRANCHES+=("$br")
             done < <(grep -E "^($(printf '%s' "$line" | sed 's/[.[\*^$()+?{|\\]/\\&/g')|$(printf '%s' "$SHORT" | sed 's/[.[\*^$()+?{|\\]/\\&/g')) " "$BRANCHES_FILE" 2>/dev/null)
         fi
-        [ ${#BRANCHES[@]} -eq 0 ] && BRANCHES=("$(git symbolic-ref --short HEAD 2>/dev/null || echo master)")
+        if [ ${#BRANCHES[@]} -eq 0 ]; then
+            _fb=$(git symbolic-ref --short HEAD 2>/dev/null)
+            if [ -n "$_fb" ]; then
+                BRANCHES=("$_fb")
+            else
+                log "SKIP: $line unable to detect branch"
+                continue
+            fi
+        fi
 
         for TARGET_BRANCH in "${BRANCHES[@]}"; do
             CURRENT_BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
