@@ -38,7 +38,7 @@ if [ ! -f "$REPO_LIST" ]; then
 
 EOF
     osascript -e 'display notification "Please fill in repo paths in repos.txt" with title "Git Auto Sync"'
-    open -W -t "$REPO_LIST"
+    open -t "$REPO_LIST"
 fi
 
 # Function to generate branches.txt
@@ -73,8 +73,12 @@ generate_branches_file() {
             cd "$ROOT_DIR"
         done < "$REPO_LIST"
     } > "$BRANCHES_FILE"
-    osascript -e 'display notification "Please review branch settings in branches.txt" with title "Git Auto Sync"'
-    open -W -t "$BRANCHES_FILE"
+    if grep -qE '^[^#]' "$BRANCHES_FILE" 2>/dev/null; then
+        osascript -e 'display notification "Please review branch settings in branches.txt" with title "Git Auto Sync"'
+        open -t "$BRANCHES_FILE"
+    else
+        rm -f "$BRANCHES_FILE"
+    fi
 }
 
 # Append branches for new repos not yet in branches.txt
@@ -145,7 +149,7 @@ while true; do
         BRANCHES=()
         if [ -f "$BRANCHES_FILE" ]; then
             while IFS= read -r entry; do
-                br=$(echo "$entry" | awk '{print $2}')
+                br=$(echo "$entry" | awk '{print $NF}')
                 [ -n "$br" ] && BRANCHES+=("$br")
             done < <(grep -E "^($(printf '%s' "$line" | sed 's/[.[\*^$()+?{|\\]/\\&/g')|$(printf '%s' "$SHORT" | sed 's/[.[\*^$()+?{|\\]/\\&/g')) " "$BRANCHES_FILE" 2>/dev/null)
         fi
@@ -198,16 +202,16 @@ while true; do
     if [ -f "$LOG_FILE" ]; then
         cat "$LOG_FILE" >> "$TMP_LOG"
     fi
-    mv "$TMP_LOG" "$LOG_FILE"
+    cp "$TMP_LOG" "$LOG_FILE"
 
     # Prepend to recent log, then truncate
     if [ -f "$RECENT_LOG" ]; then
         cat "$RECENT_LOG" >> "$TMP_LOG"
     fi
-    mv "$TMP_LOG" "$RECENT_LOG" 2>/dev/null
+    cp "$TMP_LOG" "$RECENT_LOG" 2>/dev/null
     # Truncate recent log to KEEP_RECENT cycles
     SYNC_COUNT=$(grep -c "=== Sync started ===" "$RECENT_LOG" 2>/dev/null)
-    if [ "$SYNC_COUNT" -gt "$KEEP_RECENT" ]; then
+    if [ "${SYNC_COUNT:-0}" -gt "$KEEP_RECENT" ]; then
         CUT_LINE=$(grep -n "=== Sync started ===" "$RECENT_LOG" | sed -n "$((KEEP_RECENT+1))p" | cut -d: -f1)
         if [ -n "$CUT_LINE" ]; then
             head -n $((CUT_LINE-1)) "$RECENT_LOG" > "/tmp/git-sync-recent-$$.tmp" && mv "/tmp/git-sync-recent-$$.tmp" "$RECENT_LOG"
