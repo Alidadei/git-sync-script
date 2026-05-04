@@ -242,7 +242,7 @@ Total process launches: `4 + 2N` (4 fixed PowerShell + N findstr + N PowerShell)
 
 ## Status
 
-> **Currently only tested on Windows.** macOS / Linux scripts are written but not yet tested.
+> Already tested on Windows & MAC, Linux scripts are written but not yet tested.
 
 ## Roadmap
 
