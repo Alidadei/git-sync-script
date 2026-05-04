@@ -74,6 +74,7 @@ git-sync-script/
 │   ├── sync-settings.txt          # 同步间隔等设置（首次运行自动生成）
 │   ├── repos.txt                  # 仓库路径列表（首次运行自动生成）
 │   └── branches.txt               # 分支配置（首次运行自动生成）
+├── docs/                          # 技术分析 & 开发文档，感兴趣可阅读
 ├── logs/                          # 日志目录
 │   ├── git-auto-sync.log          # 完整日志（保留所有历史）
 │   └── git-auto-sync-recent.log   # 轻量日志（仅保留最近几轮，方便调试）

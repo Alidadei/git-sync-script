@@ -74,6 +74,7 @@ git-sync-script/
 │   ├── sync-settings.txt          # Sync settings (auto-generated on first run)
 │   ├── repos.txt                  # Repo path list (auto-generated on first run)
 │   └── branches.txt               # Branch config (auto-generated on first run)
+├── docs/                          # Technical analysis & dev docs, feel free to read
 ├── logs/                          # Log directory
 │   ├── git-auto-sync.log          # Full log (all history)
 │   └── git-auto-sync-recent.log   # Recent log (last few cycles, for quick debugging)
