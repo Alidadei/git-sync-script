@@ -84,23 +84,6 @@ if "%~1"=="*" (
 )
 goto :eof
 
-:check_new_repo
-set "NR=%~1"
-if "%NR%"=="" goto :eof
-echo %NR% | findstr /b "#" >nul
-if not errorlevel 1 goto :eof
-if not exist "%NR%\.git" goto :eof
-for %%I in ("%NR%.") do set "NR_SHORT=%%~nxI"
-:: Check if already in branches.txt
-findstr /b /l /c:"%NR_SHORT% " "%BRANCHES_FILE%" >nul 2>&1
-if not errorlevel 1 goto :eof
-findstr /b /l /c:"%NR% " "%BRANCHES_FILE%" >nul 2>&1
-if not errorlevel 1 goto :eof
-:: Not found - append branch entries
-call :gen_branch_line "%NR%"
-echo.>> "%BRANCHES_FILE%"
-goto :eof
-
 :main_loop
 :: Read config (re-read every cycle)
 set "INTERVAL=10"
@@ -117,11 +100,23 @@ if not "!HAS_REPOS!"=="1" goto :skip_gen_branches
 goto :generate_branches
 :skip_gen_branches
 
-:: Append branches for new repos not yet in branches.txt
+:: Append branches for new repos not yet in branches.txt (single PS call for UTF-8 safe matching)
+set "NEW_REPOS_FILE=%TEMP%\git-sync-new-repos.tmp"
 if exist "%BRANCHES_FILE%" (
-    for /f "usebackq tokens=* delims=" %%R in ("%REPO_LIST%") do (
-        call :check_new_repo "%%R"
+    powershell -NoProfile -Command ^
+        "$bl=[IO.File]::ReadAllLines('%BRANCHES_FILE%',[Text.Encoding]::UTF8);" ^
+        "foreach($line in [IO.File]::ReadAllLines('%REPO_LIST%',[Text.Encoding]::UTF8)){" ^
+        "  if($line-match'^\s*#'-or$line-match'^\s*$'){continue};" ^
+        "  $p=$line.Trim();if(!(Test-Path \"$p\.git\")){continue};" ^
+        "  $s=Split-Path $p -Leaf;" ^
+        "  $found=$false;foreach($b in $bl){if($b-match('^'+[regex]::Escape($s)+'\s')-or$b-match('^'+[regex]::Escape($p)+'\s')){$found=$true;break}};" ^
+        "  if(!$found){$p}" ^
+        "}" > "%NEW_REPOS_FILE%" 2>nul
+    for /f "usebackq tokens=* delims=" %%R in ("%NEW_REPOS_FILE%") do (
+        call :gen_branch_line "%%R"
+        echo.>> "%BRANCHES_FILE%"
     )
+    del "%NEW_REPOS_FILE%" 2>nul
 )
 
 :: Truncate temp file
@@ -185,16 +180,19 @@ call :log "Syncing %REPO% ==="
 
 pushd "%REPO%"
 
-:: Collect target branches
+:: Collect target branches (PowerShell for UTF-8 safe matching)
 for %%I in ("%REPO%.") do set "REPO_SHORT=%%~nxI"
 set "BRANCH_FOUND=0"
 if exist "%BRANCHES_FILE%" (
-    for /f "tokens=1,2" %%a in ('findstr /b /l /c:"%REPO_SHORT% " "%BRANCHES_FILE%" 2^>nul') do (
+    set "BRANCH_MATCH=%TEMP%\git-sync-branch.tmp"
+    powershell -NoProfile -Command ^
+        "$bl=[IO.File]::ReadAllLines('%BRANCHES_FILE%',[Text.Encoding]::UTF8);" ^
+        "$s='%REPO_SHORT%';$p='%REPO%';" ^
+        "foreach($b in $bl){if($b-match('^'+[regex]::Escape($s)+'\s')-or$b-match('^'+[regex]::Escape($p)+'\s')){$b;break}}" > "!BRANCH_MATCH!" 2>nul
+    for /f "tokens=1,2" %%a in ("!BRANCH_MATCH!") do (
         if not "%%b"=="" call :do_sync "%%b"&set "BRANCH_FOUND=1"
     )
-    for /f "tokens=1,2" %%a in ('findstr /b /l /c:"%REPO% " "%BRANCHES_FILE%" 2^>nul') do (
-        if not "%%b"=="" call :do_sync "%%b"&set "BRANCH_FOUND=1"
-    )
+    del "!BRANCH_MATCH!" 2>nul
 )
 if "!BRANCH_FOUND!"=="0" (
     for /f "tokens=*" %%b in ('git symbolic-ref --short HEAD 2^>nul') do (
