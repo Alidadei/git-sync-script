@@ -242,7 +242,7 @@ my-project dev
 
 ## 当前状态
 
-> **当前仅 Windows 平台运行通过。** macOS / Linux 脚本已编写，待测试。
+> 当前 Windows & MAC 平台都运行通过。 Linux 脚本已编写，待测试。
 
 ## 待开发
 
