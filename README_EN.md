@@ -8,6 +8,17 @@ An ultra-lightweight Git repository auto-sync tool — system script + txt is al
 
 Runs silently, automatically commits, pushes, and pulls on schedule. Once started, zero manual effort required — your repos are always up to date across all your machines!
 
+## Recommended Use Cases
+
+- Auto-backup for **personal** notes and document repos
+- **Multi-device** sync for single-branch or multi-branch repos
+- **Periodic auto-save** of work progress
+
+## Not Suitable For
+
+- **Simultaneous multi-user editing** workflows (prone to conflicts)
+- Projects requiring fine-grained commit message control
+
 ## Features
 
 - **One-click start, ready to use** — Double-click the setup script and you're done.
@@ -184,17 +195,49 @@ my-project dev
 
 The above config runs the full add → commit → pull → push cycle for both `main` and `dev` sequentially.
 
-## Use Cases
+## Sync Performance Analysis
 
-- Auto-backup for personal notes and document repos
-- Multi-device sync for single-branch or multi-branch repos
-- Periodic auto-save of work progress
+### How the Sync Interval Works
 
-## Not Suitable For
+The sync interval is a fixed sleep **after** each sync cycle completes, not a precise periodic timer:
 
-- Multi-branch collaborative repos (may cause conflicts)
-- Projects requiring fine-grained commit message control
-- Multi-user simultaneous editing workflows
+```
+Actual cycle = sync execution time + INTERVAL × 60 seconds
+```
+
+For example, with `INTERVAL=2` (2 minutes), if a sync cycle takes 30 seconds, the actual gap between cycles is 2 min 30 sec.
+
+### Per-Cycle Stage Breakdown
+
+Let N = number of repos, B = lines in branches.txt.
+
+| Stage | Process Launches | Time Complexity | Typical Cost |
+|---|---|---|---|
+| Duplicate instance check | 1× PowerShell | O(1) | ~300ms |
+| Read config | 2× findstr | O(1) | ~100ms |
+| New repo check | 1× PowerShell | O(N × B) ≈ O(N) | ~400ms |
+| **Per-repo sync** | **N × (findstr + PowerShell)** | **O(N)** | **Primary cost** |
+| Log processing | 2× PowerShell | O(1) | ~600ms |
+
+Total process launches: `4 + 2N` (4 fixed PowerShell + N findstr + N PowerShell).
+
+### Per-Repo Sync Breakdown
+
+| Step | Operation | Typical Cost |
+|---|---|---|
+| Comment check | findstr | ~50ms |
+| Branch lookup | PowerShell + read branches.txt | ~350ms |
+| `git add -A` | Scan working directory | Depends on repo size |
+| `git diff --cached --quiet` | Check staging area | ~50ms |
+| `git commit` | Only when changes exist | ~100ms |
+| `git pull --rebase --autostash` | Network request | **Primary bottleneck** |
+| `git push` | Network request | **Primary bottleneck** |
+
+### Bottleneck Analysis
+
+- **The real bottleneck is network I/O** (`git pull` / `git push`), independent of algorithm design
+- **Process launch overhead**: Each repo's branch lookup spawns one PowerShell (~350ms); for 6 repos that's ~2.1s — acceptable compared to network I/O
+- **Algorithmic complexity** is already O(N) and cannot be lower (each repo needs at least one git operation cycle)
 
 ## Status
 
