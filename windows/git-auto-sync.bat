@@ -149,7 +149,7 @@ powershell -NoProfile -Command ^
     "$rl='%RECENT_LOG%';$k=%KEEP_RECENT%;" ^
     "$c=$new;" ^
     "if(Test-Path $rl){$c=$c+[IO.File]::ReadAllText($rl,[Text.Encoding]::UTF8)};" ^
-    "$m=[regex]::Matches($c,'\[.*?\] === Sync started ===');" ^
+    "$m=[regex]::Matches($c,'\[.*?\] =+ Sync started =+');" ^
     "if($m.Count -gt $k){$c=$c.Substring(0,$m[$k].Index)};" ^
     "[IO.File]::WriteAllText($rl,([char]239+[char]187+[char]191)+$c,(New-Object Text.UTF8Encoding $false));" ^
     "Remove-Item '%TMP_LOG%' -Force" >nul 2>&1
