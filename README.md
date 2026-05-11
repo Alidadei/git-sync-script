@@ -1,5 +1,9 @@
 # Git Auto Sync
 
+[![Stars](https://img.shields.io/github/stars/Alidadei/Awesome-Git-Autosync?style=flat-square)](https://github.com/Alidadei/Awesome-Git-Autosync/stargazers)
+[![Forks](https://img.shields.io/github/forks/Alidadei/Awesome-Git-Autosync?style=flat-square)](https://github.com/Alidadei/Awesome-Git-Autosync/network/members)
+[![Last Commit](https://img.shields.io/github/last-commit/Alidadei/Awesome-Git-Autosync?style=flat-square)](https://github.com/Alidadei/Awesome-Git-Autosync/commits/master)
+
 **[English](README_EN.md)** | **中文**
 
 还在为个人多台电脑上的仓库同步而苦恼吗？快来试试这个好用的工具！
@@ -7,6 +11,18 @@
 这是一个极轻量化的 Git 仓库自动同步工具，system script + txt is all your need! 无需额外安装或依赖任何软件。 
 
 全程静默运行，定时自动 commit + push + pull，启动之后无需任何手动操作，让你在多台电脑上的仓库永远 up to date！
+
+> 推荐仓库描述（可直接粘贴到 GitHub Description）：
+> 极轻量 Git 仓库自动同步工具 | Lightweight auto git-sync tool for multi-device: auto commit + pull + push, no extra dependencies.
+
+## 仓库曝光配置（1分钟完成）
+
+- **Topics（建议）**：
+  `git`, `git-sync`, `automation`, `cross-platform`, `sync`, `backup`, `powershell`, `bash`, `windows`, `macos`, `linux`, `auto-commit`, `lightweight`, `productivity`
+- **Homepage（建议）**：
+  `https://github.com/Alidadei/Awesome-Git-Autosync`
+- **首个 Release（v1.0.0）**：
+  可直接使用 `docs/release-notes-v1.0.0.md` 作为发布说明
 
 ## 推荐场景
 
@@ -247,4 +263,3 @@ my-project dev
 ## 待开发
 
 异常情况处理：比如文件过大、上传超时、上传失败时的最长上传时间＆报错信息提醒等
-

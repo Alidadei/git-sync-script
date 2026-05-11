@@ -1,5 +1,9 @@
 # Git Auto Sync
 
+[![Stars](https://img.shields.io/github/stars/Alidadei/Awesome-Git-Autosync?style=flat-square)](https://github.com/Alidadei/Awesome-Git-Autosync/stargazers)
+[![Forks](https://img.shields.io/github/forks/Alidadei/Awesome-Git-Autosync?style=flat-square)](https://github.com/Alidadei/Awesome-Git-Autosync/network/members)
+[![Last Commit](https://img.shields.io/github/last-commit/Alidadei/Awesome-Git-Autosync?style=flat-square)](https://github.com/Alidadei/Awesome-Git-Autosync/commits/master)
+
 **English** | **[中文](README.md)**
 
 Struggling to keep your repos in sync across multiple computers? Give this tool a try!
@@ -7,6 +11,18 @@ Struggling to keep your repos in sync across multiple computers? Give this tool 
 An ultra-lightweight Git repository auto-sync tool — system script + txt is all you need! No additional installation or dependencies required.
 
 Runs silently, automatically commits, pushes, and pulls on schedule. Once started, zero manual effort required — your repos are always up to date across all your machines!
+
+> Suggested repository description (for GitHub Description):
+> Lightweight auto git-sync tool for multi-device: auto commit + pull + push, no extra dependencies.
+
+## Repository Visibility Setup (1-minute checklist)
+
+- **Topics (recommended):**
+  `git`, `git-sync`, `automation`, `cross-platform`, `sync`, `backup`, `powershell`, `bash`, `windows`, `macos`, `linux`, `auto-commit`, `lightweight`, `productivity`
+- **Homepage (recommended):**
+  `https://github.com/Alidadei/Awesome-Git-Autosync`
+- **First Release (v1.0.0):**
+  You can directly use `docs/release-notes-v1.0.0.md` as release notes
 
 ## Recommended Use Cases
 
